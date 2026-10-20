@@ -238,7 +238,6 @@ main.has-fab{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
    <section id="v-stalls">
     <div class="card stall-head hidden" id="stallHead"><h1 id="stallName"></h1><p id="stallArea"></p></div>
     <div id="myReqs"></div>
-    <div class="readonly hidden" id="roNote">You can see every stall's marks here, but only the stall owner can change them. Use <b>Morning check-in</b> for arrivals at the desk.</div>
     <div class="strip">
       <div class="card stat"><b id="sTotal">0</b><span>Expected</span></div>
       <div class="card stat ok"><b id="sIn">0</b><span>Arrived</span></div>
@@ -593,7 +592,7 @@ function renderStalls(){
   const coord = seeAll();
   $('#coordTools').classList.toggle('hidden', !coord);
   $('#stallHead').classList.toggle('hidden', coord);
-  $('#roNote').classList.toggle('hidden', role !== 'coord');
+  $('#printBtn').parentElement.classList.toggle('hidden', !seeAll());   // printing: coordinators and master only
   if (!coord && myLoc){ $('#stallName').textContent = myLoc.name; $('#stallArea').textContent = myLoc.area; }
   renderMyReqs();
 
