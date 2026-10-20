@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#11172a">
+<meta name="robots" content="noindex, nofollow">
+<title>CASnival Volunteer Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<script src="config.js"></script>
+<style>
+:root{
+  --bg:#f4f2ee; --surface:#ffffff; --surface-2:#f8f6f2; --line:#e3ded4; --fg:#151a2b; --muted:#646b7d;
+  --navy:#11172a; --accent:#e2452f; --accent-soft:#fde6e2;
+  --gold:#b98512; --gold-bg:#fff3d4; --gold-line:#ecd08a;
+  --ok:#17803d; --ok-bg:#e2f5e8; --warn:#b42318; --warn-bg:#fde8e7; --info:#2456b8; --info-bg:#e5edfb;
+  --radius:14px; --shadow:0 1px 2px rgba(17,23,42,.06),0 6px 20px rgba(17,23,42,.06);
+  --f-display:"Bricolage Grotesque",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0c1020; --surface:#151b2f; --surface-2:#10162a; --line:#262f4a; --fg:#eef0f6; --muted:#9aa2b8;
+  --navy:#070a16; --accent:#ff6a52; --accent-soft:#3a1d1b;
+  --gold:#f2c14e; --gold-bg:#2e2510; --gold-line:#5c4818;
+  --ok:#4ccf7a; --ok-bg:#12301e; --warn:#ff7a6e; --warn-bg:#3a1614; --info:#7fa6ff; --info-bg:#16233f;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+  color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+
+.top{background:var(--navy);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 12px;position:sticky;top:0;z-index:20}
+.top-row{display:flex;align-items:center;gap:12px;max-width:980px;margin:0 auto}
+.brand{font:800 20px/1 var(--f-display);letter-spacing:-.01em;display:flex;align-items:center;gap:10px;min-width:0}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;font-size:16px;flex:none}
+.brand small{display:block;font:500 11px/1.2 var(--f-body);color:#aab2cc;letter-spacing:.06em;text-transform:uppercase;margin-top:3px}
+.spacer{flex:1}
+.sync{display:flex;align-items:center;gap:6px;font-size:12px;color:#c4cae0;background:rgba(255,255,255,.07);padding:6px 10px;border-radius:999px;border:0;flex:none}
+.dot{width:8px;height:8px;border-radius:50%;background:#4ccf7a;box-shadow:0 0 0 3px rgba(76,207,122,.2)}
+.dot.bad{background:#ff6a52;box-shadow:0 0 0 3px rgba(255,106,82,.25)}
+.dot.busy{background:#f2c14e;box-shadow:0 0 0 3px rgba(242,193,78,.25)}
+.who-btn{font-size:12px;color:#c4cae0;background:transparent;border:1px solid rgba(255,255,255,.18);padding:5px 10px;border-radius:999px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rots{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:980px;margin:12px auto 0}
+.rot{border:1px solid rgba(255,255,255,.14);background:transparent;color:#c4cae0;border-radius:10px;padding:8px 6px;text-align:center;line-height:1.2}
+.rot b{display:block;font-size:14px;color:#fff}
+.rot span{font:500 11.5px var(--f-mono)}
+.rot.on{background:#fff;color:var(--navy);border-color:#fff}
+.rot.on b{color:var(--navy)}
+.rot .now{display:inline-block;margin-left:4px;font:700 9.5px var(--f-body);letter-spacing:.06em;color:var(--accent);vertical-align:2px}
+.demo-bar{background:var(--gold-bg);color:var(--gold);border-bottom:1px solid var(--gold-line);text-align:center;font-size:12.5px;padding:7px 16px;font-weight:600}
+
+main{max-width:980px;margin:0 auto;padding:16px 16px calc(40px + env(safe-area-inset-bottom))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.stall-head{padding:14px 16px;margin-bottom:12px}
+.stall-head h1{font:800 24px/1.15 var(--f-display);margin:0}
+.stall-head p{margin:2px 0 0;color:var(--muted);font-size:13.5px}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat{padding:10px 12px}
+.stat b{display:block;font:700 22px/1.1 var(--f-mono);letter-spacing:-.02em}
+.stat span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.stat.ok b{color:var(--ok)} .stat.bad b{color:var(--warn)}
+
+.search{display:flex;align-items:center;gap:10px;padding:4px 6px 4px 14px;margin-bottom:10px}
+.search svg{flex:none;color:var(--muted)}
+.search input{flex:1;border:0;background:transparent;font-size:17px;padding:11px 0;outline:none;min-width:0}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--muted)}
+.chip.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+
+.group{margin-bottom:16px}
+.group-h{display:flex;align-items:baseline;gap:4px 8px;margin:0 2px 8px;flex-wrap:wrap}
+.group-h b{font:700 15px var(--f-display);white-space:nowrap}
+.group-h span{font-size:12.5px;color:var(--muted)}
+.group-h .count{margin-left:auto;font:700 13px var(--f-mono);white-space:nowrap}
+.group-h .count.bad{color:var(--warn)}
+.list{display:flex;flex-direction:column;gap:8px}
+.vrow{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);background:var(--surface);border-radius:var(--radius);text-align:left;width:100%}
+.vrow:hover{border-color:var(--muted)}
+.vrow.st-noshow{border-color:var(--warn);background:linear-gradient(90deg,var(--warn-bg),var(--surface) 60%)}
+.vinfo{flex:1;min-width:0}
+.vinfo b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vinfo span{display:block;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stars{color:var(--gold);letter-spacing:1px}
+.badge{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 8px;border-radius:6px;white-space:nowrap;flex:none}
+.b-Pending{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.b-Arrived{background:var(--ok-bg);color:var(--ok)}
+.b-Didn{background:var(--warn-bg);color:var(--warn)}
+.b-Left{background:var(--gold-bg);color:var(--gold)}
+.b-Finished{background:var(--info-bg);color:var(--info)}
+.quick{border:0;background:var(--ok);color:#fff;font-weight:700;border-radius:10px;padding:9px 12px;font-size:13.5px;flex:none}
+.empty{padding:36px 16px;text-align:center;color:var(--muted)}
+
+.overlay{position:fixed;inset:0;background:rgba(8,11,22,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fade .15s}
+.sheet{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));animation:up .2s ease-out}
+@media (min-width:700px){.overlay{align-items:center}.sheet{border-radius:20px}}
+@keyframes up{from{transform:translateY(30px);opacity:0}}
+@keyframes fade{from{opacity:0}}
+.sheet-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:6px}
+.sheet-head h2{font:800 24px/1.2 var(--f-display);margin:0;flex:1;min-width:0}
+.close{border:0;background:var(--surface-2);width:36px;height:36px;border-radius:50%;font-size:18px;color:var(--muted);flex:none}
+.sub{color:var(--muted);font-size:13.5px;margin:0 0 14px}
+.marked{font-size:13px;color:var(--muted);margin:-6px 0 14px}
+.stgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.stbtn{border:2px solid var(--line);background:var(--surface-2);border-radius:12px;padding:14px 10px;font-weight:700;font-size:15px}
+.stbtn.on{border-color:currentColor}
+.stbtn.s-Arrived{color:var(--ok)} .stbtn.s-Didn{color:var(--warn)} .stbtn.s-Left{color:var(--gold)} .stbtn.s-Finished{color:var(--info)}
+.stbtn.on.s-Arrived{background:var(--ok-bg)} .stbtn.on.s-Didn{background:var(--warn-bg)} .stbtn.on.s-Left{background:var(--gold-bg)} .stbtn.on.s-Finished{background:var(--info-bg)}
+.reset{border:0;background:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:4px 0;margin-bottom:12px}
+.lbl{display:block;font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:6px 0 6px}
+.rate{display:flex;gap:4px;margin-bottom:12px}
+.rate button{border:0;background:none;font-size:30px;line-height:1;color:var(--line);padding:2px}
+.rate button.on{color:var(--gold)}
+textarea,.field input{width:100%;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:11px 12px;font-size:16px;outline:none;resize:vertical}
+textarea:focus,.field input:focus{border-color:var(--accent);background:var(--surface)}
+.btn{border:0;border-radius:12px;padding:14px 18px;font-weight:700;font-size:16px;width:100%;margin-top:10px}
+.btn-main{background:var(--accent);color:#fff}
+.btn[disabled]{opacity:.55;cursor:wait}
+.call{color:inherit}
+
+.login{max-width:420px;margin:8vh auto;padding:24px}
+.login .brand-mark{width:44px;height:44px;font-size:22px;border-radius:12px;margin-bottom:14px}
+.login h1{font:800 26px/1.15 var(--f-display);margin:0 0 6px}
+.field{margin-bottom:14px}
+.field .note{font-size:12.5px;color:var(--muted);margin-top:5px}
+.err{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 12px;font-weight:600;font-size:14px;margin-bottom:12px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;z-index:80;box-shadow:var(--shadow);max-width:90vw;animation:up .2s}
+.toast.bad{background:var(--warn);color:#fff}
+
+@media (max-width:560px){
+  .strip{grid-template-columns:repeat(2,1fr)}
+  .brand small{display:none}
+  .who-btn{max-width:120px}
+  .rot span{font-size:10.5px}
+}
+</style>
+</head>
+<body>
+
+<section id="login" class="hidden">
+  <div class="login card">
+    <div class="brand-mark">🙋</div>
+    <h1 id="loginTitle">Volunteer Desk</h1>
+    <p style="color:var(--muted);margin:0 0 20px">Mark which volunteers turned up at your stall.</p>
+    <div id="loginErr" class="err hidden"></div>
+    <div class="field">
+      <label class="lbl" for="who">Your name</label>
+      <input id="who" placeholder="e.g. Priya (stall owner)" maxlength="40" autocomplete="off">
+      <div class="note">Saved next to everything you mark.</div>
+    </div>
+    <div class="field">
+      <label class="lbl" for="code">Stall code</label>
+      <input id="code" placeholder="6-letter code from the organisers" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    </div>
+    <button class="btn btn-main" id="loginBtn">Start</button>
+  </div>
+</section>
+
+<div id="app" class="hidden">
+  <header class="top">
+    <div class="top-row">
+      <div class="brand"><span class="brand-mark">🙋</span><div><span id="eventName">CASnival</span><small>Volunteer desk</small></div></div>
+      <div class="spacer"></div>
+      <button class="sync" id="syncBtn" title="Refresh now"><span class="dot" id="syncDot"></span><span id="syncText">Syncing…</span></button>
+      <button class="who-btn" id="whoBtn" title="Sign out"></button>
+    </div>
+    <nav class="rots" id="rots"></nav>
+  </header>
+  <div class="demo-bar hidden" id="demoBar">Demo mode — data is saved only on this device. Add the script URL in config.js to go live.</div>
+
+  <main>
+    <div class="card stall-head hidden" id="stallHead"><h1 id="stallName"></h1><p id="stallArea"></p></div>
+    <div class="strip">
+      <div class="card stat"><b id="sTotal">0</b><span>Expected</span></div>
+      <div class="card stat ok"><b id="sIn">0</b><span>Arrived</span></div>
+      <div class="card stat bad"><b id="sNo">0</b><span>Didn't show</span></div>
+      <div class="card stat"><b id="sWait">0</b><span>Not marked</span></div>
+    </div>
+    <div id="coordTools" class="hidden">
+      <div class="card search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Volunteer or stall…" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="filters" id="filters">
+        <button class="chip on" data-f="all">All</button>
+        <button class="chip" data-f="Pending">Not marked</button>
+        <button class="chip" data-f="Didn't show">Didn't show</button>
+        <button class="chip" data-f="Arrived">Arrived</button>
+        <button class="chip" data-f="Left early">Left early</button>
+      </div>
+    </div>
+    <div id="results"></div>
+  </main>
+</div>
+
+<div id="modal"></div>
+<div id="toastBox"></div>
+
+<script>
+(() => {
+'use strict';
+const CFG = Object.assign({ API_URL:'', EVENT_NAME:'CASnival 2026', REFRESH_SECONDS:15 }, window.CASNIVAL_CONFIG || {});
+const DEMO = !CFG.API_URL;
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const store = {
+  get(k){ try{ return localStorage.getItem('casvol.'+k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem('casvol.'+k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem('casvol.'+k); }catch(e){} }
+};
+const STATUSES = ['Arrived', "Didn't show", 'Left early', 'Finished'];
+const DEFAULT_ROTATIONS = [
+  { id:'R1', label:'Rotation 1', start:'08:30', end:'10:30' },
+  { id:'R2', label:'Rotation 2', start:'10:30', end:'14:00' },
+  { id:'R3', label:'Rotation 3', start:'14:00', end:'17:00' }
+];
+
+let session = { who: store.get('who') || '', code: store.get('code') || '' };
+let role = '', myLoc = null;
+let locations = [], shifts = [], rotations = DEFAULT_ROTATIONS;
+let rot = store.get('rot') || '';
+let filter = 'all';
+let lastSync = 0, syncing = false, syncFailed = false, openId = null;
+
+/* --------------------------------- API --------------------------------- */
+async function api(action, payload = {}){
+  if (DEMO) return demoApi(action, payload);
+  const body = JSON.stringify(Object.assign({ action, pin: session.code, device: session.who }, payload));
+  const res = await fetch(CFG.API_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body, redirect:'follow' });
+  if (!res.ok) throw new Error('Server error ' + res.status);
+  return res.json();
+}
+
+/* Demo backend: coordinator PIN 1234, stall codes FOOD01, GAME03, OAK000 */
+function demoDb(){
+  let db; try{ db = JSON.parse(store.get('demo') || 'null'); }catch(e){}
+  if (!db){
+    const locs = [['F1','Food stall 1','Food','Basketball courts (top)','FOOD01'],['G3','Game stall 3','Game','Turf (right side)','GAME03'],['OAK','Oak Jail','Post','Turf (centre)','OAK000'],['TC2','Ticket check (Gate 2)','Post','Gate 2','TICK02']];
+    const plan = [['F1','G3','F1'],['F1','F1','F1'],['G3','OAK','G3'],['OAK','OAK','OAK'],['OAK','TC2','OAK'],['TC2','F1','TC2'],['TC2','TC2','TC2'],['G3','G3','G3']];
+    db = { locs, shifts: [] };
+    plan.forEach((p, i) => p.forEach((loc, j) => db.shifts.push({ id:'S'+String(db.shifts.length+1).padStart(3,'0'), volunteerId:'V'+(i+1), name:'Volunteer '+(i+1), phone:'', rotation:'R'+(j+1), location:loc, status:'Pending', markedAt:'', markedBy:'', note:'', rating:0 })));
+    store.set('demo', JSON.stringify(db));
+  }
+  return db;
+}
+async function demoApi(action, p){
+  await new Promise(r => setTimeout(r, 200));
+  const db = demoDb(), save = () => store.set('demo', JSON.stringify(db));
+  const code = session.code.trim().toUpperCase();
+  const row = db.locs.find(l => l[4] === code);
+  const who = session.code === '1234' ? { role:'coord', loc:null } : row ? { role:'stall', loc:{ code:row[0], name:row[1], type:row[2], area:row[3] } } : null;
+  if (!who) return { ok:false, authError:true, error:'Wrong code. (Demo: 1234 coordinator, FOOD01 / GAME03 / OAK000 stalls)' };
+  if (action === 'vol.ping') return { ok:true, role:who.role, location:who.loc };
+  if (action === 'vol.list') return { ok:true, role:who.role, location:who.loc, rotations:DEFAULT_ROTATIONS,
+    locations: db.locs.filter(l => who.role === 'coord' || l[0] === who.loc.code).map(l => ({ code:l[0], name:l[1], type:l[2], area:l[3] })),
+    shifts: db.shifts.filter(s => who.role === 'coord' || s.location === who.loc.code) };
+  if (action === 'vol.mark'){
+    const s = db.shifts.find(x => x.id === p.id);
+    if (!s) return { ok:false, error:'That shift was not found.' };
+    if (who.role !== 'coord' && s.location !== who.loc.code) return { ok:false, error:'You can only mark volunteers at your own stall.' };
+    if (p.status !== undefined){ s.status = p.status; s.markedAt = p.status === 'Pending' ? '' : new Date().toISOString(); s.markedBy = p.status === 'Pending' ? '' : session.who; }
+    if (p.note !== undefined) s.note = String(p.note).trim();
+    if (p.rating !== undefined) s.rating = Number(p.rating) || 0;
+    save(); return { ok:true, shift:s };
+  }
+  return { ok:false, error:'Unknown action.' };
+}
+
+/* ------------------------------- helpers ------------------------------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cls = st => st.split(/[ ']/)[0];          // "Didn't show" -> "Didn"
+const label = st => st === 'Pending' ? 'Not marked' : st;
+function fmtTime(iso){
+  if (!iso) return ''; const d = new Date(iso); if (isNaN(d)) return iso;
+  return d.toLocaleTimeString('en-IN', { hour:'numeric', minute:'2-digit' });
+}
+function toast(msg, bad){
+  const el = document.createElement('div'); el.className = 'toast' + (bad ? ' bad' : ''); el.textContent = msg;
+  $('#toastBox').replaceChildren(el); setTimeout(() => el.remove(), 2600);
+}
+const mins = hhmm => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
+function currentRot(){
+  const now = new Date(), m = now.getHours() * 60 + now.getMinutes();
+  const hit = rotations.find(r => m >= mins(r.start) && m < mins(r.end));
+  if (hit) return hit.id;
+  return m < mins(rotations[0].start) ? rotations[0].id : rotations[rotations.length - 1].id;
+}
+const locName = code => (locations.find(l => l.code === code) || { name: code }).name;
+const locArea = code => (locations.find(l => l.code === code) || { area: '' }).area;
+const stars = n => n ? '<span class="stars">' + '★'.repeat(n) + '</span>' : '';
+
+/* -------------------------------- sync -------------------------------- */
+async function refresh(manual){
+  if (syncing) return; syncing = true; paintSync();
+  try{
+    const r = await api('vol.list');
+    if (r.authError){ logout(r.error); return; }
+    if (!r.ok) throw new Error(r.error);
+    role = r.role; myLoc = r.location; locations = r.locations; shifts = r.shifts;
+    if (r.rotations && r.rotations.length) rotations = r.rotations;
+    lastSync = Date.now(); syncFailed = false;
+    render();
+    if (manual) toast('Up to date');
+  }catch(e){ syncFailed = true; if (manual) toast('Could not reach the sheet — check internet', true); }
+  finally{ syncing = false; paintSync(); }
+}
+function paintSync(){
+  const dot = $('#syncDot'), txt = $('#syncText');
+  dot.className = 'dot' + (syncing ? ' busy' : syncFailed ? ' bad' : '');
+  if (syncing && !lastSync) txt.textContent = 'Loading…';
+  else if (syncFailed) txt.textContent = 'Offline';
+  else if (DEMO) txt.textContent = 'Demo';
+  else { const s = Math.round((Date.now() - lastSync) / 1000); txt.textContent = s < 5 ? 'Live' : 'Synced ' + (s < 60 ? s + 's' : Math.round(s / 60) + 'm') + ' ago'; }
+}
+setInterval(() => { paintSync(); if (!document.hidden && session.code && !openId && Date.now() - lastSync > CFG.REFRESH_SECONDS * 1000) refresh(); }, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && session.code) refresh(); });
+
+/* ------------------------------- render ------------------------------- */
+function render(){
+  const now = currentRot();
+  if (!rotations.some(r => r.id === rot)) rot = now;
+  $('#rots').innerHTML = rotations.map(r => `<button class="rot ${r.id === rot ? 'on' : ''}" data-rot="${esc(r.id)}"><b>${esc(r.label)}${r.id === now ? '<span class="now">NOW</span>' : ''}</b><span>${esc(r.start)}–${esc(r.end)}</span></button>`).join('');
+
+  const coord = role === 'coord';
+  $('#coordTools').classList.toggle('hidden', !coord);
+  $('#stallHead').classList.toggle('hidden', coord);
+  if (!coord && myLoc){ $('#stallName').textContent = myLoc.name; $('#stallArea').textContent = myLoc.area; }
+  $('#whoBtn').textContent = session.who + ' · ' + (coord ? 'Coordinator' : myLoc ? myLoc.name : '') + ' ⇄';
+
+  const inRot = shifts.filter(s => s.rotation === rot);
+  const count = st => inRot.filter(s => s.status === st).length;
+  $('#sTotal').textContent = inRot.length;
+  $('#sIn').textContent = count('Arrived') + count('Finished') + count('Left early');
+  $('#sNo').textContent = count("Didn't show");
+  $('#sWait').textContent = count('Pending');
+
+  let list = inRot;
+  if (coord){
+    if (filter !== 'all') list = list.filter(s => s.status === filter);
+    const q = $('#q').value.trim().toLowerCase();
+    if (q) list = list.filter(s => (s.name + ' ' + locName(s.location) + ' ' + s.location + ' ' + locArea(s.location)).toLowerCase().includes(q));
+  }
+  if (!list.length){
+    $('#results').innerHTML = '<div class="empty card">' + (inRot.length ? 'Nobody matches.' : 'No volunteers are assigned here for this rotation.') + '</div>';
+    return;
+  }
+  const order = locations.map(l => l.code);
+  const groups = {};
+  list.forEach(s => (groups[s.location] = groups[s.location] || []).push(s));
+  const keys = Object.keys(groups).sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999));
+  $('#results').innerHTML = keys.map(code => {
+    const g = groups[code], all = inRot.filter(s => s.location === code);
+    const ok = all.filter(s => s.status !== 'Pending' && s.status !== "Didn't show").length;
+    const no = all.filter(s => s.status === "Didn't show").length;
+    const head = coord ? `<div class="group-h"><b>${esc(locName(code))}</b><span>${esc(locArea(code))}</span><span class="count ${no ? 'bad' : ''}">${ok}/${all.length}${no ? ' · ' + no + ' no-show' : ''}</span></div>` : '';
+    return `<div class="group">${head}<div class="list">${g.map(rowHtml).join('')}</div></div>`;
+  }).join('');
+}
+function rowHtml(s){
+  const meta = s.status === 'Pending'
+    ? (s.note ? esc(s.note) : 'Tap to add a note or rating')
+    : esc(label(s.status)) + ' at ' + esc(fmtTime(s.markedAt)) + (s.markedBy ? ' by ' + esc(s.markedBy) : '') + (s.note ? ' · ' + esc(s.note) : '');
+  return `<button class="vrow ${s.status === "Didn't show" ? 'st-noshow' : ''}" data-id="${esc(s.id)}">
+    <span class="vinfo"><b>${esc(s.name)} ${stars(s.rating)}</b><span>${meta}</span></span>
+    ${s.status === 'Pending' ? `<span class="quick" data-quick="${esc(s.id)}">✓ Arrived</span>` : `<span class="badge b-${cls(s.status)}">${esc(label(s.status))}</span>`}
+  </button>`;
+}
+
+$('#rots').addEventListener('click', e => { const b = e.target.closest('[data-rot]'); if (b){ rot = b.dataset.rot; store.set('rot', rot); render(); } });
+$('#filters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; $$('#filters .chip').forEach(c => c.classList.toggle('on', c === b)); render(); });
+$('#q').addEventListener('input', render);
+$('#results').addEventListener('click', e => {
+  const q = e.target.closest('[data-quick]'); if (q){ e.stopPropagation(); return mark(q.dataset.quick, { status:'Arrived' }); }
+  const r = e.target.closest('[data-id]'); if (r) openShift(r.dataset.id);
+});
+
+/* ------------------------------- marking ------------------------------ */
+async function mark(id, change, btn){
+  if (btn) btn.disabled = true;
+  try{
+    const r = await api('vol.mark', Object.assign({ id }, change));
+    if (r.authError){ logout(r.error); return false; }
+    if (!r.ok){ toast(r.error || 'Could not save', true); return false; }
+    const i = shifts.findIndex(s => s.id === id); if (i >= 0) shifts[i] = r.shift;
+    render();
+    if (change.status) toast(r.shift.name + ': ' + label(r.shift.status));
+    return true;
+  }catch(e){ toast('No connection — nothing was saved. Try again.', true); return false; }
+  finally{ if (btn) btn.disabled = false; }
+}
+
+function closeModal(){ $('#modal').innerHTML = ''; openId = null; }
+function openShift(id){
+  const s = shifts.find(x => x.id === id); if (!s) return;
+  openId = id;
+  const r = rotations.find(x => x.id === s.rotation) || { label: s.rotation, start:'', end:'' };
+  let rating = s.rating || 0;
+  $('#modal').innerHTML = `
+  <div class="overlay" data-close>
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head"><h2>${esc(s.name)}</h2><button class="close" data-close aria-label="Close">✕</button></div>
+      <p class="sub">${esc(locName(s.location))} · ${esc(r.label)} (${esc(r.start)}–${esc(r.end)})${s.phone ? ` · <a class="call" href="tel:${esc(s.phone)}">${esc(s.phone)}</a>` : ''}</p>
+      ${s.status !== 'Pending' ? `<p class="marked">Marked <b>${esc(label(s.status))}</b> at ${esc(fmtTime(s.markedAt))}${s.markedBy ? ' by ' + esc(s.markedBy) : ''}</p>` : ''}
+      <div class="stgrid">${STATUSES.map(st => `<button class="stbtn s-${cls(st)} ${s.status === st ? 'on' : ''}" data-st="${esc(st)}">${{ 'Arrived':'✓ Arrived', "Didn't show":"✗ Didn't show", 'Left early':'↩ Left early', 'Finished':'★ Finished shift' }[st]}</button>`).join('')}</div>
+      ${s.status !== 'Pending' ? '<button class="reset" data-st="Pending">Undo — set back to not marked</button>' : ''}
+      <label class="lbl">Rating (optional)</label>
+      <div class="rate" id="rate">${[1,2,3,4,5].map(n => `<button data-n="${n}" aria-label="${n} star${n > 1 ? 's' : ''}">★</button>`).join('')}</div>
+      <label class="lbl" for="note">Note (optional)</label>
+      <textarea id="note" rows="2" maxlength="200" placeholder="e.g. very helpful, left at 3pm">${esc(s.note)}</textarea>
+      <button class="btn btn-main" id="saveNote">Save note & rating</button>
+    </div>
+  </div>`;
+  const paintRate = () => $$('#rate button').forEach(b => b.classList.toggle('on', Number(b.dataset.n) <= rating));
+  paintRate();
+  $('#rate').onclick = e => { const b = e.target.closest('[data-n]'); if (!b) return; const n = Number(b.dataset.n); rating = rating === n ? 0 : n; paintRate(); };
+  $$('#modal [data-st]').forEach(b => b.onclick = async () => { if (await mark(id, { status: b.dataset.st }, b)) openShift(id); });
+  $('#saveNote').onclick = async e => { if (await mark(id, { note: $('#note').value, rating }, e.target)){ toast('Saved'); closeModal(); } };
+}
+$('#modal').addEventListener('click', e => { if (e.target.hasAttribute('data-close')) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId) closeModal(); });
+
+/* -------------------------------- login -------------------------------- */
+$('#syncBtn').onclick = () => refresh(true);
+$('#whoBtn').onclick = () => { if (confirm('Sign this device out? You will need the code again.')) logout(); };
+function logout(msg){
+  store.del('code'); session.code = ''; shifts = []; locations = []; lastSync = 0; role = ''; myLoc = null; closeModal();
+  $('#app').classList.add('hidden'); $('#login').classList.remove('hidden');
+  $('#who').value = session.who;
+  const e = $('#loginErr'); if (msg){ e.textContent = msg; e.classList.remove('hidden'); } else e.classList.add('hidden');
+}
+async function start(){
+  $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+  await refresh();
+}
+$('#loginBtn').onclick = async () => {
+  const who = $('#who').value.trim(), code = $('#code').value.trim(), e = $('#loginErr');
+  if (!who || !code){ e.textContent = 'Enter your name and the stall code.'; e.classList.remove('hidden'); return; }
+  const b = $('#loginBtn'); b.disabled = true; b.textContent = 'Checking…';
+  session = { who, code };
+  try{
+    const r = await api('vol.ping');
+    if (r.ok){ store.set('who', who); store.set('code', code); $('#code').value = ''; rot = currentRot(); store.set('rot', rot); start(); }
+    else { e.textContent = r.error || 'Wrong code.'; e.classList.remove('hidden'); session.code = ''; }
+  }catch(err){ e.textContent = 'Could not reach the sheet. Check the internet connection.'; e.classList.remove('hidden'); session.code = ''; }
+  b.disabled = false; b.textContent = 'Start';
+};
+$('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loginBtn').click(); });
+
+/* -------------------------------- boot -------------------------------- */
+document.title = CFG.EVENT_NAME + ' · Volunteer Desk';
+$('#eventName').textContent = CFG.EVENT_NAME;
+$('#loginTitle').textContent = CFG.EVENT_NAME + ' Volunteers';
+if (DEMO){ $('#demoBar').classList.remove('hidden'); $('#code').placeholder = 'Demo: FOOD01, or 1234 for coordinator'; }
+if (session.who && session.code) start(); else logout();
+})();
+</script>
+</body>
+</html>
