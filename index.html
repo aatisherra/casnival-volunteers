@@ -9,6 +9,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Volunteers">
 <script src="config.js"></script>
 <style>
 :root{
@@ -132,6 +137,10 @@ textarea:focus,.field input:focus{border-color:var(--accent);background:var(--su
 .err{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:10px 12px;font-weight:600;font-size:14px;margin-bottom:12px}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;z-index:80;box-shadow:var(--shadow);max-width:90vw;animation:up .2s}
 .toast.bad{background:var(--warn);color:#fff}
+.offline-bar{background:var(--warn-bg);color:var(--warn);border-bottom:1px solid var(--warn);text-align:center;font-size:13px;padding:8px 16px;font-weight:600}
+.badge.b-wait{background:var(--gold-bg);color:var(--gold);margin-right:4px}
+.tools{display:flex;justify-content:flex-end;margin:4px 0 10px}
+.tools button{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--muted)}
 
 @media (max-width:560px){
   .strip{grid-template-columns:repeat(2,1fr)}
@@ -172,6 +181,7 @@ textarea:focus,.field input:focus{border-color:var(--accent);background:var(--su
     </div>
     <nav class="rots" id="rots"></nav>
   </header>
+  <div class="offline-bar hidden" id="offlineBar">No internet. Keep marking — it's saved on this phone and sent automatically when it's back.</div>
   <div class="demo-bar hidden" id="demoBar">Demo mode — data is saved only on this device. Add the script URL in config.js to go live.</div>
 
   <main>
@@ -196,6 +206,7 @@ textarea:focus,.field input:focus{border-color:var(--accent);background:var(--su
       </div>
     </div>
     <div id="results"></div>
+    <div class="tools"><button id="printBtn">Print this rotation (paper backup)</button></div>
   </main>
 </div>
 
@@ -227,14 +238,52 @@ let locations = [], shifts = [], rotations = DEFAULT_ROTATIONS;
 let rot = store.get('rot') || '';
 let filter = 'all';
 let lastSync = 0, syncing = false, syncFailed = false, openId = null;
+const loadJSON = (k, d) => { try{ return JSON.parse(store.get(k) || 'null') || d; }catch(e){ return d; } };
+let version = '', flushing = false;
+let outbox = loadJSON('outbox', []);   // marks waiting to reach the sheet
+const buzz = p => { try{ if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(p); }catch(e){} };
 
 /* --------------------------------- API --------------------------------- */
-async function api(action, payload = {}){
+async function api(action, payload = {}, ms = 15000){
   if (DEMO) return demoApi(action, payload);
   const body = JSON.stringify(Object.assign({ action, pin: session.code, device: session.who }, payload));
-  const res = await fetch(CFG.API_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body, redirect:'follow' });
-  if (!res.ok) throw new Error('Server error ' + res.status);
-  return res.json();
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), ms);
+  try{
+    const res = await fetch(CFG.API_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body, redirect:'follow', signal: ctl.signal });
+    if (!res.ok) throw new Error('Server error ' + res.status);
+    return await res.json();
+  } finally { clearTimeout(timer); }
+}
+
+/* Marks made with no internet are kept on this phone and sent later. Each has
+   an id, so the script never applies the same mark twice. */
+const newId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
+function saveOutbox(){ store.set('outbox', JSON.stringify(outbox)); paintSync(); }
+function saveCache(){ store.set('cache', JSON.stringify({ version, role, myLoc, locations, shifts, rotations })); }
+function applyLocal(op){
+  const s = shifts.find(x => x.id === op.change.id); if (!s) return;
+  const c = op.change;
+  if (c.status !== undefined){ s.status = c.status; s.markedAt = c.status === 'Pending' ? '' : op.at; s.markedBy = c.status === 'Pending' ? '' : session.who; }
+  if (c.note !== undefined) s.note = String(c.note).trim();
+  if (c.rating !== undefined) s.rating = Number(c.rating) || 0;
+  s.pending = true;
+}
+async function flush(){
+  if (flushing || !outbox.length || DEMO) return;
+  flushing = true; paintSync();
+  try{
+    while (outbox.length){
+      const op = outbox[0];
+      let r;
+      try{ r = await api('vol.mark', Object.assign({ opId: op.id, at: op.at }, op.change)); }
+      catch(e){ syncFailed = true; return; }
+      if (r.authError){ logout(r.error); return; }
+      outbox.shift(); saveOutbox();
+      if (r.ok){ const i = shifts.findIndex(s => s.id === r.shift.id); if (i >= 0) shifts[i] = r.shift; }
+      else { buzz([80,60,80]); toast('A mark saved offline was refused: ' + (r.error || 'unknown error'), true); }
+    }
+    syncFailed = false;
+  } finally { flushing = false; paintSync(); render(); }
 }
 
 /* Demo backend: coordinator PIN 1234, stall codes FOOD01, GAME03, OAK000 */
@@ -299,13 +348,18 @@ const stars = n => n ? '<span class="stars">' + '★'.repeat(n) + '</span>' : ''
 async function refresh(manual){
   if (syncing) return; syncing = true; paintSync();
   try{
-    const r = await api('vol.list');
+    await flush();
+    const r = await api('vol.list', manual || !version ? {} : { since: version });
     if (r.authError){ logout(r.error); return; }
     if (!r.ok) throw new Error(r.error);
-    role = r.role; myLoc = r.location; locations = r.locations; shifts = r.shifts;
+    role = r.role; myLoc = r.location;
     if (r.rotations && r.rotations.length) rotations = r.rotations;
+    if (!r.unchanged){
+      version = r.version || ''; locations = r.locations; shifts = r.shifts; saveCache();
+      outbox.forEach(applyLocal);
+      render();
+    }
     lastSync = Date.now(); syncFailed = false;
-    render();
     if (manual) toast('Up to date');
   }catch(e){ syncFailed = true; if (manual) toast('Could not reach the sheet — check internet', true); }
   finally{ syncing = false; paintSync(); }
@@ -313,12 +367,21 @@ async function refresh(manual){
 function paintSync(){
   const dot = $('#syncDot'), txt = $('#syncText');
   dot.className = 'dot' + (syncing ? ' busy' : syncFailed ? ' bad' : '');
-  if (syncing && !lastSync) txt.textContent = 'Loading…';
-  else if (syncFailed) txt.textContent = 'Offline';
+  $('#offlineBar').classList.toggle('hidden', !syncFailed || !session.code);
+  if (outbox.length && !syncFailed) dot.className = 'dot busy';
+  if (syncing && !lastSync && !shifts.length) txt.textContent = 'Loading…';
+  else if (syncFailed) txt.textContent = 'Offline' + (outbox.length ? ' · ' + outbox.length + ' waiting' : '');
+  else if (outbox.length) txt.textContent = 'Sending ' + outbox.length + '…';
   else if (DEMO) txt.textContent = 'Demo';
   else { const s = Math.round((Date.now() - lastSync) / 1000); txt.textContent = s < 5 ? 'Live' : 'Synced ' + (s < 60 ? s + 's' : Math.round(s / 60) + 'm') + ' ago'; }
 }
-setInterval(() => { paintSync(); if (!document.hidden && session.code && !openId && Date.now() - lastSync > CFG.REFRESH_SECONDS * 1000) refresh(); }, 1000);
+setInterval(() => {
+  paintSync();
+  if (document.hidden || !session.code || openId) return;
+  if (Date.now() - lastSync > (syncFailed ? 5000 : CFG.REFRESH_SECONDS * 1000)) refresh();
+}, 1000);
+window.addEventListener('online', () => { if (session.code) refresh(); });
+window.addEventListener('offline', () => { syncFailed = true; paintSync(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && session.code) refresh(); });
 
 /* ------------------------------- render ------------------------------- */
@@ -368,7 +431,7 @@ function rowHtml(s){
     : esc(label(s.status)) + ' at ' + esc(fmtTime(s.markedAt)) + (s.markedBy ? ' by ' + esc(s.markedBy) : '') + (s.note ? ' · ' + esc(s.note) : '');
   return `<button class="vrow ${s.status === "Didn't show" ? 'st-noshow' : ''}" data-id="${esc(s.id)}">
     <span class="vinfo"><b>${esc(s.name)} ${stars(s.rating)}</b><span>${meta}</span></span>
-    ${s.status === 'Pending' ? `<span class="quick" data-quick="${esc(s.id)}">✓ Arrived</span>` : `<span class="badge b-${cls(s.status)}">${esc(label(s.status))}</span>`}
+    ${s.pending ? '<span class="badge b-wait">⏳</span>' : ''}${s.status === 'Pending' ? `<span class="quick" data-quick="${esc(s.id)}">✓ Arrived</span>` : `<span class="badge b-${cls(s.status)}">${esc(label(s.status))}</span>`}
   </button>`;
 }
 
@@ -383,17 +446,45 @@ $('#results').addEventListener('click', e => {
 /* ------------------------------- marking ------------------------------ */
 async function mark(id, change, btn){
   if (btn) btn.disabled = true;
+  const op = { id:newId(), at:new Date().toISOString(), change:Object.assign({ id }, change) };
+  const offline = () => {
+    outbox.push(op); saveOutbox(); applyLocal(op); render(); buzz(30);
+    const s = shifts.find(x => x.id === id);
+    toast((s ? s.name + ': ' : '') + 'saved on this phone — will send when online');
+    return true;
+  };
   try{
-    const r = await api('vol.mark', Object.assign({ id }, change));
+    if (!DEMO && (navigator.onLine === false || outbox.length)){ const ok = offline(); if (navigator.onLine !== false) flush(); return ok; }
+    const r = await api('vol.mark', Object.assign({ opId: op.id }, op.change), syncFailed ? 5000 : 9000);
     if (r.authError){ logout(r.error); return false; }
     if (!r.ok){ toast(r.error || 'Could not save', true); return false; }
+    syncFailed = false;
     const i = shifts.findIndex(s => s.id === id); if (i >= 0) shifts[i] = r.shift;
-    render();
+    render(); buzz(30);
     if (change.status) toast(r.shift.name + ': ' + label(r.shift.status));
     return true;
-  }catch(e){ toast('No connection — nothing was saved. Try again.', true); return false; }
+  }catch(e){ if (DEMO) return false; syncFailed = true; return offline(); }
   finally{ if (btn) btn.disabled = false; }
 }
+
+$('#printBtn').onclick = () => {
+  const w = window.open('', '_blank'); if (!w){ toast('Allow pop-ups to print', true); return; }
+  const r = rotations.find(x => x.id === rot) || { label: rot, start:'', end:'' };
+  const list = shifts.filter(s => s.rotation === rot);
+  const groups = {};
+  list.forEach(s => (groups[s.location] = groups[s.location] || []).push(s));
+  const order = locations.map(l => l.code);
+  const body = Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b)).map(code =>
+    `<h2>${esc(locName(code))} <small>${esc(locArea(code))}</small></h2><table><tr><th>Volunteer</th><th>Status now</th><th>Arrived</th><th>No-show</th><th>Note</th></tr>${groups[code].map(s =>
+      `<tr><td>${esc(s.name)}</td><td>${esc(label(s.status))}</td><td class="b"></td><td class="b"></td><td></td></tr>`).join('')}</table>`).join('');
+  w.document.write(`<!doctype html><meta charset="utf-8"><title>Volunteers ${esc(r.label)}</title><style>
+    body{font:12px/1.35 -apple-system,Segoe UI,Arial,sans-serif;margin:18px}h1{font-size:18px;margin:0 0 4px}p{color:#444;margin:0 0 10px}
+    h2{font-size:14px;margin:14px 0 4px}h2 small{font-weight:400;color:#666}table{width:100%;border-collapse:collapse;page-break-inside:avoid}
+    th,td{border:1px solid #999;padding:4px 6px;text-align:left}th{background:#eee}td.b{width:60px}</style>
+    <h1>${esc(CFG.EVENT_NAME)} volunteers — ${esc(r.label)} (${esc(r.start)}–${esc(r.end)})</h1>
+    <p>Printed ${new Date().toLocaleString('en-IN')}. Tick a box for each volunteer, then enter it on the site when it's back.</p>${body || '<p>No volunteers.</p>'}`);
+  w.document.close(); setTimeout(() => w.print(), 300);
+};
 
 function closeModal(){ $('#modal').innerHTML = ''; openId = null; }
 function openShift(id){
@@ -429,13 +520,19 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId) cl
 $('#syncBtn').onclick = () => refresh(true);
 $('#whoBtn').onclick = () => { if (confirm('Sign this device out? You will need the code again.')) logout(); };
 function logout(msg){
-  store.del('code'); session.code = ''; shifts = []; locations = []; lastSync = 0; role = ''; myLoc = null; closeModal();
+  store.del('code'); store.del('cache'); session.code = ''; shifts = []; locations = []; lastSync = 0; role = ''; myLoc = null; version = ''; closeModal();
   $('#app').classList.add('hidden'); $('#login').classList.remove('hidden');
   $('#who').value = session.who;
   const e = $('#loginErr'); if (msg){ e.textContent = msg; e.classList.remove('hidden'); } else e.classList.add('hidden');
 }
 async function start(){
   $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+  const c = loadJSON('cache', null);
+  if (c && c.shifts){
+    version = c.version || ''; role = c.role; myLoc = c.myLoc; locations = c.locations; shifts = c.shifts;
+    if (c.rotations) rotations = c.rotations;
+    outbox.forEach(applyLocal); render();
+  }
   await refresh();
 }
 $('#loginBtn').onclick = async () => {
@@ -447,7 +544,7 @@ $('#loginBtn').onclick = async () => {
     const r = await api('vol.ping');
     if (r.ok){ store.set('who', who); store.set('code', code); $('#code').value = ''; rot = currentRot(); store.set('rot', rot); start(); }
     else { e.textContent = r.error || 'Wrong code.'; e.classList.remove('hidden'); session.code = ''; }
-  }catch(err){ e.textContent = 'Could not reach the sheet. Check the internet connection.'; e.classList.remove('hidden'); session.code = ''; }
+  }catch(err){ e.textContent = 'Could not reach the sheet. Signing in needs internet once — after that the phone keeps working offline.'; e.classList.remove('hidden'); session.code = ''; }
   b.disabled = false; b.textContent = 'Start';
 };
 $('#code').addEventListener('keydown', e => { if (e.key === 'Enter') $('#loginBtn').click(); });
@@ -458,6 +555,7 @@ $('#eventName').textContent = CFG.EVENT_NAME;
 $('#loginTitle').textContent = CFG.EVENT_NAME + ' Volunteers';
 if (DEMO){ $('#demoBar').classList.remove('hidden'); $('#code').placeholder = 'Demo: FOOD01, or 1234 for coordinator'; }
 if (session.who && session.code) start(); else logout();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
 </body>
