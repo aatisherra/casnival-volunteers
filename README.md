@@ -11,8 +11,19 @@ ticket site.
 
 | Who | Signs in with | Can do |
 |---|---|---|
-| Stall owner / post lead | The 6-letter code for their stall (Locations tab) | See and mark only their own stall's volunteers |
-| Coordinator | `COORDINATOR_PIN` in `Volunteers.gs` | See and mark every stall, search, filter no-shows |
+| Stall owner / post lead | The 6-letter code for their stall (Locations tab) | See and mark only their own stall's volunteers, call them, tap **🆘 Need help**, and use the **Help** tab |
+| Coordinator | `COORDINATOR_PIN` in `Volunteers.gs` | **🔔 Alerts**, **Morning check-in** (saves each volunteer's arrival time), and every stall's marks **read-only** |
+| You | `MASTER_PIN` in `Code.gs` | Everything above, plus a **Testing** tab that resets stall marks, morning check-ins and help requests (a Drive backup is saved first) |
+
+**Alerts** (coordinator and master only): the 🔔 Alerts tab, a red banner on every screen, and a
+beep and buzz for each new help request. An alert is raised when a stall owner taps **🆘 Need help**, or
+when a stall has nobody marked as arrived 15 minutes into a rotation. Stall alerts only start once
+the event is running (someone checked in or marked). Requests are saved in the **Help requests** tab.
+Alerts show within about 15 seconds, but only on a phone with the site open.
+
+**Phone numbers:** stall owners and coordinators get 📞 Call and WhatsApp buttons for every
+volunteer whose number is in the **Volunteers** tab, column **C**. The **Help** tab lists the
+people in the **Contacts** tab; fill in their names and numbers there.
 
 Each volunteer can be marked **Arrived**, **Didn't show**, **Left early** or
 **Finished shift**, with an optional 1–5 star rating and a short note. Every mark
@@ -129,4 +140,4 @@ and Floaters.
 ## Trying it without the sheet
 
 If `API_URL` in `config.js` is empty, the site runs in **demo mode** on that device only.
-Use `1234` for the coordinator, or `FOOD01`, `GAME03` or `OAK000` as stall codes.
+Use `1234` for the coordinator, `0000` for master, or `FOOD01`, `GAME03` or `OAK000` as stall codes.
