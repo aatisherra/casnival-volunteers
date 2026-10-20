@@ -239,7 +239,7 @@ let rot = store.get('rot') || '';
 let filter = 'all';
 let lastSync = 0, syncing = false, syncFailed = false, openId = null;
 const loadJSON = (k, d) => { try{ return JSON.parse(store.get(k) || 'null') || d; }catch(e){ return d; } };
-let version = '', flushing = false;
+let version = '', flushing = false, lastFull = 0;
 let outbox = loadJSON('outbox', []);   // marks waiting to reach the sheet
 const buzz = p => { try{ if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate(p); }catch(e){} };
 
@@ -349,7 +349,9 @@ async function refresh(manual){
   if (syncing) return; syncing = true; paintSync();
   try{
     await flush();
-    const r = await api('vol.list', manual || !version ? {} : { since: version });
+    const full = manual || !version || Date.now() - lastFull > 60000;
+    const r = await api('vol.list', full ? {} : { since: version });
+    if (full) lastFull = Date.now();
     if (r.authError){ logout(r.error); return; }
     if (!r.ok) throw new Error(r.error);
     role = r.role; myLoc = r.location;
