@@ -169,6 +169,27 @@ textarea:focus,.field input:focus{border-color:var(--accent);background:var(--su
 .test h3{margin:0 0 4px;font:700 16px var(--f-display)}
 .test p{margin:0;color:var(--muted);font-size:13.5px}
 
+.helpfab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:30;border:0;background:var(--warn);color:#fff;font-weight:800;font-size:16px;border-radius:999px;padding:14px 20px;box-shadow:0 6px 20px rgba(180,35,24,.35)}
+.alert-bar{display:block;width:100%;border:0;background:var(--warn);color:#fff;text-align:center;font-weight:700;font-size:14px;padding:10px 16px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.82}}
+.view .n{display:inline-block;min-width:18px;margin-left:5px;padding:0 5px;border-radius:999px;background:var(--warn);color:#fff;font:700 11px/18px var(--f-body)}
+.view.on .n{background:#fff;color:var(--accent)}
+.acard{padding:14px 16px;margin-bottom:10px;border-left:5px solid var(--warn)}
+.acard.on-it{border-left-color:var(--gold)}
+.acard.uncov{border-left-color:var(--info)}
+.acard h3{margin:0;font:700 16px var(--f-display)}
+.acard .meta{color:var(--muted);font-size:13px;margin:2px 0 8px}
+.acard .say{margin:0 0 10px;font-weight:600}
+.arow{display:flex;gap:8px;flex-wrap:wrap}
+.arow .btn{width:auto;flex:1;margin-top:0;padding:11px 14px;font-size:14.5px}
+.btn-soft{background:var(--surface-2);border:1px solid var(--line);color:var(--fg)}
+.myreq{padding:12px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;border-left:5px solid var(--warn)}
+.myreq.on-it{border-left-color:var(--gold)}
+.typegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.typegrid button{border:2px solid var(--line);background:var(--surface-2);border-radius:12px;padding:14px 8px;font-weight:700;font-size:14.5px}
+.typegrid button.on{border-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
+main.has-fab{padding-bottom:calc(90px + env(safe-area-inset-bottom))}
+
 @media (max-width:560px){
   .strip{grid-template-columns:repeat(2,1fr)}
   .brand small{display:none}
@@ -209,12 +230,14 @@ textarea:focus,.field input:focus{border-color:var(--accent);background:var(--su
     <nav class="views" id="views"></nav>
     <nav class="rots" id="rots"></nav>
   </header>
+  <button class="alert-bar hidden" id="alertBar"></button>
   <div class="offline-bar hidden" id="offlineBar">No internet. Keep marking — it's saved on this phone and sent automatically when it's back.</div>
   <div class="demo-bar hidden" id="demoBar">Demo mode — data is saved only on this device. Add the script URL in config.js to go live.</div>
 
   <main>
    <section id="v-stalls">
     <div class="card stall-head hidden" id="stallHead"><h1 id="stallName"></h1><p id="stallArea"></p></div>
+    <div id="myReqs"></div>
     <div class="readonly hidden" id="roNote">You can see every stall's marks here, but only the stall owner can change them. Use <b>Morning check-in</b> for arrivals at the desk.</div>
     <div class="strip">
       <div class="card stat"><b id="sTotal">0</b><span>Expected</span></div>
@@ -258,6 +281,11 @@ textarea:focus,.field input:focus{border-color:var(--accent);background:var(--su
     <div class="tools"><button id="printAttBtn">Print sign-in sheet (paper backup)</button></div>
    </section>
 
+   <section id="v-alerts" class="hidden">
+    <p class="hint" style="color:var(--muted);margin:0 0 12px;font-size:13.5px">Help requests from stall owners, and stalls with nobody marked as arrived 15 minutes into a rotation. Keep this site open on the coordinator phone: alerts arrive within about 15 seconds, with a beep and a buzz.</p>
+    <div id="alertList"></div>
+   </section>
+
    <section id="v-help" class="hidden">
     <div class="card stall-head" id="helpHead"></div>
     <h2 class="h2">People to call</h2>
@@ -281,11 +309,12 @@ textarea:focus,.field input:focus{border-color:var(--accent);background:var(--su
     <div class="readonly">Testing tools for the master PIN. An Excel copy of the whole sheet is saved to Drive → <b>CASnival backups</b> before every reset. Ticket resets are on the ticket site → Overview.</div>
     <div class="card test"><h3>Reset stall marks</h3><p>Every volunteer at every stall goes back to <b>Not marked</b>, and notes and ratings are cleared.</p><button class="btn danger" data-reset="marks">Reset stall marks</button></div>
     <div class="card test"><h3>Reset morning check-in</h3><p>Clears every arrival time from the morning check-in.</p><button class="btn danger" data-reset="attendance">Reset morning check-in</button></div>
-    <div class="card test"><h3>Reset everything</h3><p>Both of the above. Names, phones, stalls and codes are not touched.</p><button class="btn danger" data-reset="all">Reset all volunteer data</button></div>
+    <div class="card test"><h3>Reset everything</h3><p>Both of the above, plus every help request. Names, phones, stalls and codes are not touched.</p><button class="btn danger" data-reset="all">Reset all volunteer data</button></div>
    </section>
   </main>
 </div>
 
+<button class="helpfab hidden" id="helpFab">🆘 Need help</button>
 <div id="modal"></div>
 <div id="toastBox"></div>
 
@@ -310,7 +339,9 @@ const DEFAULT_ROTATIONS = [
 
 let session = { who: store.get('who') || '', code: store.get('code') || '' };
 let role = '', myLoc = null;
-let locations = [], shifts = [], rotations = DEFAULT_ROTATIONS, volunteers = [], contacts = [];
+let locations = [], shifts = [], rotations = DEFAULT_ROTATIONS, volunteers = [], contacts = [], help = [];
+const HELP_TYPES = [['Need a volunteer','🙋 Need a volunteer'],['Supplies','📦 Supplies'],['First aid','🩹 First aid'],['Security','🛡 Security'],['Something else','💬 Something else']];
+let seenHelp = new Set(JSON.parse(store.get('seenHelp') || '[]'));
 let rot = store.get('rot') || '';
 let view = store.get('view') || '';
 let filter = 'all', attFilter = 'all';
@@ -338,9 +369,17 @@ async function api(action, payload = {}, ms = 15000){
    an id, so the script never applies the same mark twice. */
 const newId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2);
 function saveOutbox(){ store.set('outbox', JSON.stringify(outbox)); paintSync(); }
-function saveCache(){ store.set('cache', JSON.stringify({ version, role, myLoc, locations, shifts, rotations, volunteers, contacts })); }
+function saveCache(){ store.set('cache', JSON.stringify({ version, role, myLoc, locations, shifts, rotations, volunteers, contacts, help })); }
 function applyLocal(op){
   const c = op.change;
+  if (op.action === 'vol.help'){
+    if (!help.some(h => h.id === 'tmp-' + op.id)) help.push({ id:'tmp-' + op.id, at:op.at, location: myLoc ? myLoc.code : '', type:c.type, note:c.note || '', by:session.who, status:'Open', handledBy:'', handledAt:'', pending:true });
+    return;
+  }
+  if (op.action === 'vol.helpUpdate'){
+    const h = help.find(x => x.id === c.id); if (h){ h.status = c.status; h.handledBy = session.who; h.handledAt = op.at; h.pending = true; }
+    return;
+  }
   if (op.action === 'vol.attend'){
     const v = volunteers.find(x => x.id === c.volunteerId); if (!v) return;
     if (c.here === false){ v.arrivedAt = ''; v.checkedBy = ''; }
@@ -364,14 +403,18 @@ async function flush(){
       catch(e){ syncFailed = true; return; }
       if (r.authError){ logout(r.error); return; }
       outbox.shift(); saveOutbox();
-      if (r.ok) takeResult(r);
+      if (r.ok) takeResult(r, op);
       else { buzz([80,60,80]); toast('A change saved offline was refused: ' + (r.error || 'unknown error'), true); }
     }
     syncFailed = false;
   } finally { flushing = false; paintSync(); render(); }
 }
 
-function takeResult(r){
+function takeResult(r, op){
+  if (r.request){
+    help = help.filter(h => h.id !== r.request.id && (!op || h.id !== 'tmp-' + op.id));
+    help.push(r.request);
+  }
   if (r.shift){ const i = shifts.findIndex(s => s.id === r.shift.id); if (i >= 0) shifts[i] = r.shift; }
   if (r.volunteer){ const i = volunteers.findIndex(v => v.id === r.volunteer.id); if (i >= 0) volunteers[i] = r.volunteer; syncAtEvent(r.volunteer); }
 }
@@ -401,9 +444,20 @@ async function demoApi(action, p){
   const all = who.role !== 'stall';
   db.shifts.forEach(s => { s.atEvent = (db.vols.find(v => v.id === s.volunteerId) || {}).arrivedAt || ''; });
   if (action === 'vol.ping') return { ok:true, role:who.role, location:who.loc };
-  if (action === 'vol.list') return { ok:true, role:who.role, location:who.loc, rotations:DEFAULT_ROTATIONS, contacts:db.contacts, volunteers: all ? db.vols : undefined,
+  if (action === 'vol.list') return { ok:true, role:who.role, location:who.loc, rotations:DEFAULT_ROTATIONS, contacts:db.contacts, help:(db.help || []).filter(h => all || h.location === who.loc.code), volunteers: all ? db.vols : undefined,
     locations: db.locs.filter(l => all || l[0] === who.loc.code).map(l => ({ code:l[0], name:l[1], type:l[2], area:l[3] })),
     shifts: db.shifts.filter(s => all || s.location === who.loc.code) };
+  db.help = db.help || [];
+  if (action === 'vol.help'){
+    if (who.role !== 'stall') return { ok:false, error:'Only stall owners send help requests.' };
+    const h = { id:'H' + String(db.help.length + 1).padStart(3,'0'), at:new Date().toISOString(), location:who.loc.code, type:p.type, note:p.note || '', by:session.who, status:'Open', handledBy:'', handledAt:'' };
+    db.help.push(h); save(); return { ok:true, request:h };
+  }
+  if (action === 'vol.helpUpdate'){
+    const h = db.help.find(x => x.id === p.id); if (!h) return { ok:false, error:'Not found.' };
+    if (!all && (h.location !== who.loc.code || p.status !== 'Done')) return { ok:false, error:"You can only close your own stall's requests." };
+    Object.assign(h, { status:p.status, handledBy:session.who, handledAt:new Date().toISOString() }); save(); return { ok:true, request:h };
+  }
   if (action === 'vol.attend'){
     if (!all) return { ok:false, error:'Only coordinators can do the morning check-in.' };
     const v = db.vols.find(x => x.id === p.volunteerId); if (!v) return { ok:false, error:'Not found.' };
@@ -414,6 +468,7 @@ async function demoApi(action, p){
     if (who.role !== 'master') return { ok:false, error:'Only the master PIN can reset.' };
     if (p.what !== 'attendance') db.shifts.forEach(s => Object.assign(s, { status:'Pending', markedAt:'', markedBy:'', note:'', rating:0 }));
     if (p.what !== 'marks') db.vols.forEach(v => Object.assign(v, { arrivedAt:'', checkedBy:'' }));
+    if (p.what === 'all') db.help = [];
     save(); return { ok:true };
   }
   if (action === 'vol.mark'){
@@ -473,7 +528,8 @@ async function refresh(manual){
     if (r.rotations && r.rotations.length) rotations = r.rotations;
     if (!r.unchanged){
       version = r.version || ''; locations = r.locations; shifts = r.shifts;
-      volunteers = r.volunteers || []; contacts = r.contacts || []; saveCache();
+      volunteers = r.volunteers || []; contacts = r.contacts || []; help = r.help || []; saveCache();
+      notifyNewHelp();
       outbox.forEach(applyLocal);
       render();
     }
@@ -493,6 +549,7 @@ function paintSync(){
   else if (DEMO) txt.textContent = 'Demo';
   else { const s = Math.round((Date.now() - lastSync) / 1000); txt.textContent = s < 5 ? 'Live' : 'Synced ' + (s < 60 ? s + 's' : Math.round(s / 60) + 'm') + ' ago'; }
 }
+setInterval(() => { if (session.code && !openId && seeAll()) render(); }, 30000);
 setInterval(() => {
   paintSync();
   if (document.hidden || !session.code || openId) return;
@@ -505,19 +562,26 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && se
 /* ------------------------------- render ------------------------------- */
 function viewsFor(){
   if (role === 'stall') return [['stalls','My volunteers'],['help','Help']];
-  const v = [['attend','Morning check-in'],['stalls','Stalls'],['help','Help']];
+  const v = [['alerts','🔔 Alerts'],['attend','Morning check-in'],['stalls','Stalls'],['help','Help']];
   if (role === 'master') v.push(['test','Testing']);
   return v;
 }
 function render(){
   const vs = viewsFor();
-  if (!vs.some(v => v[0] === view)) view = vs[0][0];
-  $('#views').innerHTML = vs.map(([k, l]) => `<button class="view ${k === view ? 'on' : ''}" data-view="${k}">${l}</button>`).join('');
-  ['stalls','attend','help','test'].forEach(k => $('#v-' + k).classList.toggle('hidden', k !== view));
+  if (!vs.some(v => v[0] === view)) view = role === 'stall' ? 'stalls' : 'attend';
+  const nAlerts = seeAll() ? computeAlerts().length : 0;
+  $('#views').innerHTML = vs.map(([k, l]) => `<button class="view ${k === view ? 'on' : ''}" data-view="${k}">${l}${k === 'alerts' && nAlerts ? `<span class="n">${nAlerts}</span>` : ''}</button>`).join('');
+  ['stalls','attend','help','test','alerts'].forEach(k => $('#v-' + k).classList.toggle('hidden', k !== view));
+  $('#alertBar').classList.toggle('hidden', !nAlerts || view === 'alerts');
+  $('#alertBar').textContent = '🔔 ' + nAlerts + (nAlerts === 1 ? ' alert' : ' alerts') + ' — tap to see';
+  const fab = role === 'stall' && (view === 'stalls' || view === 'help');
+  $('#helpFab').classList.toggle('hidden', !fab);
+  document.querySelector('main').classList.toggle('has-fab', fab);
   $('#rots').classList.toggle('hidden', view !== 'stalls');
   $('#whoBtn').textContent = session.who + ' · ' + (role === 'master' ? 'Master' : role === 'coord' ? 'Coordinator' : myLoc ? myLoc.name : '') + ' ⇄';
   if (view === 'attend') return renderAttend();
   if (view === 'help') return renderHelp();
+  if (view === 'alerts') return renderAlerts();
   if (view === 'test') return;
   renderStalls();
 }
@@ -531,6 +595,7 @@ function renderStalls(){
   $('#stallHead').classList.toggle('hidden', coord);
   $('#roNote').classList.toggle('hidden', role !== 'coord');
   if (!coord && myLoc){ $('#stallName').textContent = myLoc.name; $('#stallArea').textContent = myLoc.area; }
+  renderMyReqs();
 
   const inRot = shifts.filter(s => s.rotation === rot);
   const count = st => inRot.filter(s => s.status === st).length;
@@ -646,11 +711,111 @@ $('#printAttBtn').onclick = () => {
   w.document.close(); setTimeout(() => w.print(), 300);
 };
 
+/* --------------------------- need help / alerts --------------------------- */
+const agoText = iso => { const m = Math.round((Date.now() - new Date(iso)) / 60000); return m < 1 ? 'just now' : m < 60 ? m + ' min ago' : fmtTime(iso); };
+const openHelp = () => help.filter(h => h.status !== 'Done');
+function renderMyReqs(){
+  const mine = role === 'stall' ? openHelp() : [];
+  $('#myReqs').innerHTML = mine.map(h => `<div class="card myreq ${h.status === 'On it' ? 'on-it' : ''}">
+    <span class="vinfo"><b>${esc(h.type)}${h.pending ? ' ⏳' : ''}</b><span>Sent ${esc(agoText(h.at))} · ${h.status === 'On it' ? esc(h.handledBy || 'A coordinator') + ' is on it' : 'Waiting for a coordinator'}</span></span>
+    <button class="quick" style="background:var(--surface-2);color:var(--fg);border:1px solid var(--line)" data-close-req="${esc(h.id)}">Sorted</button></div>`).join('');
+}
+$('#myReqs').addEventListener('click', e => {
+  const b = e.target.closest('[data-close-req]'); if (!b) return;
+  send('vol.helpUpdate', { id: b.dataset.closeReq, status:'Done' }, b, () => toast('Request closed'));
+});
+$('#helpFab').onclick = () => {
+  openId = 'help';
+  let type = '';
+  $('#modal').innerHTML = `
+  <div class="overlay" data-close>
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head"><h2>Ask for help</h2><button class="close" data-close aria-label="Close">✕</button></div>
+      <p class="sub">The coordinators get an alert straight away. For anyone hurt or in danger, also <b>call</b> first aid or security from the Help tab.</p>
+      <div class="typegrid" id="types">${HELP_TYPES.map(([k, l]) => `<button data-type="${esc(k)}">${l}</button>`).join('')}</div>
+      <label class="lbl" for="hnote">Details (optional)</label>
+      <textarea id="hnote" rows="2" maxlength="200" placeholder="e.g. only one volunteer here, queue is long"></textarea>
+      <button class="btn danger" id="hsend" disabled>Send to coordinators</button>
+    </div>
+  </div>`;
+  $('#types').onclick = e => { const b = e.target.closest('[data-type]'); if (!b) return; type = b.dataset.type; $$('#types button').forEach(x => x.classList.toggle('on', x === b)); $('#hsend').disabled = false; };
+  $('#hsend').onclick = async e => { if (type && await send('vol.help', { type, note: $('#hnote').value.trim() }, e.target, () => toast('Sent — the coordinators have been alerted'))){ closeModal(); render(); } };
+};
+
+// Alerts for coordinators: open help requests, plus stalls with nobody
+// marked as arrived 15+ minutes into the current rotation. The stall check
+// only starts once the event is running (someone has been checked in or
+// marked), so it stays quiet on test days.
+function snoozed(){ try{ return JSON.parse(store.get('snooze') || '{}'); }catch(e){ return {}; } }
+function computeAlerts(){
+  const out = openHelp().map(h => ({ kind:'help', key:'h' + h.id, h, at:h.at }));
+  const now = new Date(), m = now.getHours() * 60 + now.getMinutes();
+  const r = rotations.find(x => m >= mins(x.start) + 15 && m < mins(x.end));
+  const inRot = r ? shifts.filter(s => s.rotation === r.id && s.location !== 'FLT') : [];
+  const live = volunteers.some(v => v.arrivedAt) || inRot.some(s => s.status !== 'Pending');
+  if (r && live){
+    const sn = snoozed(), groups = {};
+    inRot.forEach(s => (groups[s.location] = groups[s.location] || []).push(s));
+    Object.entries(groups).forEach(([loc, list]) => {
+      if (list.some(s => s.status === 'Arrived' || s.status === 'Finished')) return;
+      const key = 'u' + r.id + loc;
+      if (sn[key] && sn[key] > Date.now()) return;
+      const bad = list.filter(s => s.status === "Didn't show" || s.status === 'Left early');
+      out.push({ kind:'uncov', key, loc, r, list, why: bad.length ? bad.map(s => s.name + ': ' + label(s.status).toLowerCase()).join(', ') : 'Nobody marked as arrived yet' });
+    });
+  }
+  return out;
+}
+function renderAlerts(){
+  const list = computeAlerts();
+  if (!list.length){ $('#alertList').innerHTML = '<div class="empty card">All clear. No open help requests, and every stall has someone.</div>'; return; }
+  $('#alertList').innerHTML = list.map(a => {
+    if (a.kind === 'help'){
+      const h = a.h;
+      return `<div class="card acard ${h.status === 'On it' ? 'on-it' : ''}">
+        <h3>🆘 ${esc(locName(h.location))} · ${esc(h.type)}</h3>
+        <div class="meta">${esc(locArea(h.location))} · asked by ${esc(h.by)} · ${esc(agoText(h.at))}${h.status === 'On it' ? ' · <b>' + esc(h.handledBy) + ' is on it</b>' : ''}</div>
+        ${h.note ? `<p class="say">“${esc(h.note)}”</p>` : ''}
+        <div class="arow">${h.status === 'Open' ? `<button class="btn btn-main" data-hset="On it" data-hid="${esc(h.id)}">I'm on it</button>` : ''}<button class="btn btn-soft" data-hset="Done" data-hid="${esc(h.id)}">Done</button></div></div>`;
+    }
+    return `<div class="card acard uncov">
+      <h3>⚠ ${esc(locName(a.loc))} has nobody</h3>
+      <div class="meta">${esc(locArea(a.loc))} · ${esc(a.r.label)} started at ${esc(a.r.start)}</div>
+      <p class="say">${esc(a.why)}</p>
+      ${a.list.map(s => `<div class="kv"><span>${esc(s.name)}${s.atEvent ? ' · <span class="atev">at the event</span>' : ' · not checked in'}</span>${s.phone ? `<a class="callbtn" href="tel:${esc(telDigits(s.phone))}" aria-label="Call ${esc(s.name)}">📞</a>` : '<b>no number</b>'}</div>`).join('')}
+      <div class="arow" style="margin-top:10px"><button class="btn btn-soft" data-snooze="${esc(a.key)}">Snooze 15 min</button></div></div>`;
+  }).join('');
+}
+$('#alertList').addEventListener('click', e => {
+  const b = e.target.closest('[data-hset]');
+  if (b) return send('vol.helpUpdate', { id: b.dataset.hid, status: b.dataset.hset }, b, () => toast(b.dataset.hset === 'Done' ? 'Marked done' : 'The stall can see you are on it'));
+  const z = e.target.closest('[data-snooze]');
+  if (z){ const sn = snoozed(); sn[z.dataset.snooze] = Date.now() + 15 * 60000; store.set('snooze', JSON.stringify(sn)); render(); }
+});
+$('#alertBar').onclick = () => { view = 'alerts'; store.set('view', view); closeModal(); render(); window.scrollTo(0, 0); };
+
+// A beep and a buzz on the coordinator phone when a new request comes in.
+function beep(){
+  try{
+    const ctx = beep.ctx || (beep.ctx = new (window.AudioContext || window.webkitAudioContext)());
+    [0, 0.25].forEach(t => { const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 880; g.gain.value = 0.15; o.connect(g); g.connect(ctx.destination); o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.15); });
+  }catch(e){}
+}
+function notifyNewHelp(){
+  if (!seeAll()) return;
+  const fresh = openHelp().filter(h => h.status === 'Open' && !seenHelp.has(h.id));
+  openHelp().forEach(h => seenHelp.add(h.id));
+  store.set('seenHelp', JSON.stringify([...seenHelp].slice(-200)));
+  if (!fresh.length) return;
+  buzz([200, 100, 200]); beep();
+  toast('🆘 ' + locName(fresh[0].location) + ': ' + fresh[0].type, true);
+}
+
 /* -------------------------------- help -------------------------------- */
 function renderHelp(){
   $('#helpHead').innerHTML = myLoc
     ? `<h1>${esc(myLoc.name)}</h1><p>${esc(myLoc.area)} · signed in as ${esc(session.who)}</p>`
-    : `<h1>Help</h1><p>What stall owners see when they tap Help. Fill in the names and numbers in the <b>Contacts</b> tab of the sheet.</p>`;
+    : `<h1>Help</h1><p>What stall owners see when they tap Help, along with a red <b>🆘 Need help</b> button that sends you an alert. Fill in the names and numbers in the <b>Contacts</b> tab of the sheet.</p>`;
   $('#contacts').innerHTML = contacts.length ? contacts.map(c => `<div class="card contact">
       <span class="vinfo"><b>${esc(c.role)}${c.name ? ' · ' + esc(c.name) : ''}</b><span>${esc(c.about)}${c.phone ? '' : ' · <i>number not added yet</i>'}</span></span>
       ${c.phone ? `<a class="callbtn" style="background:var(--surface-2)" href="${esc(waLink(c.phone))}" target="_blank" rel="noopener" aria-label="WhatsApp ${esc(c.role)}">💬</a><a class="callbtn" href="tel:${esc(telDigits(c.phone))}" aria-label="Call ${esc(c.role)}">📞</a>` : ''}
@@ -787,7 +952,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && openId) cl
 $('#syncBtn').onclick = () => refresh(true);
 $('#whoBtn').onclick = () => { if (confirm('Sign this device out? You will need the code again.')) logout(); };
 function logout(msg){
-  store.del('code'); store.del('cache'); store.del('view'); session.code = ''; shifts = []; locations = []; volunteers = []; contacts = []; lastSync = 0; role = ''; myLoc = null; version = ''; view = ''; closeModal();
+  store.del('code'); store.del('cache'); store.del('view'); session.code = ''; shifts = []; locations = []; volunteers = []; contacts = []; help = []; lastSync = 0; role = ''; myLoc = null; version = ''; view = ''; closeModal();
   $('#app').classList.add('hidden'); $('#login').classList.remove('hidden');
   $('#who').value = session.who;
   const e = $('#loginErr'); if (msg){ e.textContent = msg; e.classList.remove('hidden'); } else e.classList.add('hidden');
@@ -797,7 +962,7 @@ async function start(){
   const c = loadJSON('cache', null);
   if (c && c.shifts){
     version = c.version || ''; role = c.role; myLoc = c.myLoc; locations = c.locations; shifts = c.shifts;
-    volunteers = c.volunteers || []; contacts = c.contacts || [];
+    volunteers = c.volunteers || []; contacts = c.contacts || []; help = c.help || [];
     if (c.rotations) rotations = c.rotations;
     outbox.forEach(applyLocal); render();
   }
